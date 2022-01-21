@@ -29,6 +29,7 @@ final class AdyenGatewayFactory extends GatewayFactory
         $config->defaults([
             'payum.factory_name' => self::FACTORY_NAME,
             'payum.factory_title' => 'Adyen',
+            'payum.template.obtain_token' => 'BitBagAdyenSyliusPlugin:payment.html.twig'
         ]);
 
         if (false === (bool)$config['payum.api']) {
