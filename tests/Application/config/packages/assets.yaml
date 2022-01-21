@@ -1,0 +1,5 @@
+framework:
+  assets:
+    packages:
+      adyen:
+        json_manifest_path: '%kernel.project_dir%/public/build/shop/manifest.json'

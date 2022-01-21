@@ -1,0 +1,68 @@
+{% extends "@SyliusShop/Checkout/layout.html.twig" %}
+
+
+{% block stylesheets %}
+  {{ parent() }}
+{% endblock %}
+{% block javascripts %}
+  {{ parent() }}
+  <!-- Embed the Adyen Web script element above any other JavaScript in your checkout page. -->
+  <script src="https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/5.0.0/adyen.js"
+          integrity="sha384-kcKKvS6qZbXycrUw31OJ2/2Hz8A8FTsV9anjvpyQc/IWR1SmkFUw7w7F/t5S3qtA"
+          crossorigin="anonymous"></script>
+
+  <!-- Embed the Adyen Web stylesheet. You can add your own styling by overriding the rules in the CSS file -->
+  <link rel="stylesheet" href="https://checkoutshopper-test.adyen.com/checkoutshopper/sdk/5.0.0/adyen.css"
+        integrity="sha384-0IvbHDeulbhdg1tMDeFeGlmjiYoVT6YsbfAMKFU2lFd6YKUVk0Hgivcmva3j6mkK"
+        crossorigin="anonymous">
+
+
+  <script>
+    const configuration = {
+      environment: 'test', // Change to 'live' for the live environment.
+      clientKey: 'test_MZDHXBSIB5G4FD4ZLIY3RRBZ4IIVXMSU', // Public key used for client-side authentication: https://docs.adyen.com/development-resources/client-side-authentication
+      session: {
+        id: '{{ data.id }}',
+        sessionData: '{{ data.sessionData }}'
+      },
+      onPaymentCompleted: (result, component) => {
+        console.info(result, component);
+        location.href = '{{ returnOk }}';
+      },
+      onError: (error, component) => {
+        console.error(error.name, error.message, error.stack, component);
+      },
+      onAdditionalDetails: (state, component) => {
+        console.log(state, component);
+      },
+      // Any payment method specific configuration. Find the configuration specific to each payment method:  https://docs.adyen.com/payment-methods
+      // For example, this is 3D Secure configuration for cards:
+      paymentMethodsConfiguration: {
+        card: {
+          hasHolderName: false,
+          holderNameRequired: false,
+          billingAddressRequired: false
+        }
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Create an instance of AdyenCheckout using the configuration object.
+      const checkout = await AdyenCheckout(configuration);
+      // Create an instance of Drop-in and mount it to the container you created.
+      const dropinComponent = checkout.create('dropin').mount('#dropin-container');
+
+      checkout.submitDetails({ details: { }})
+    });
+  </script>
+{% endblock %}
+
+
+{% block content %}
+
+    {{ data|json_encode }}
+
+
+    <div id="dropin-container"></div>
+
+{% endblock %}

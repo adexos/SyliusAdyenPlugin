@@ -20,12 +20,11 @@ use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Exception\UnsupportedApiException;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
-use Payum\Core\Reply\HttpPostRedirect;
+use Payum\Core\Reply\HttpResponse;
 use Payum\Core\Request\Capture;
-use Payum\Core\Request\GetHttpRequest;
+use Payum\Core\Request\RenderTemplate;
 use Payum\Core\Security\GenericTokenFactoryAwareInterface;
 use Payum\Core\Security\GenericTokenFactoryInterface;
-use Payum\Core\Security\TokenInterface;
 
 final class CaptureAction implements ActionInterface, ApiAwareInterface, GenericTokenFactoryAwareInterface, GatewayAwareInterface
 {
@@ -37,9 +36,9 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Generic
     protected $api;
 
     /**
-     * @var GenericTokenFactoryInterface
+     * @var null|GenericTokenFactoryInterface
      */
-    protected $tokenFactory;
+    protected ?GenericTokenFactoryInterface $tokenFactory;
 
     /**
      * {@inheritDoc}
@@ -54,7 +53,7 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Generic
     }
 
     /**
-     * @param GenericTokenFactoryInterface $genericTokenFactory
+     * @param null|GenericTokenFactoryInterface $genericTokenFactory
      *
      * @return void
      */
@@ -66,54 +65,37 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface, Generic
     /**
      * {@inheritDoc}
      *
-     * @param Capture $request
+     * @param mixed|Capture $request
      */
     public function execute($request): void
     {
-        RequestNotSupportedException::assertSupports($this, $request);
 
-        /** @var TokenInterface $token */
+        RequestNotSupportedException::assertSupports($this, $request);
+        $model = ArrayObject::ensureArrayObject($request->getModel());
+        $params = $model->toUnsafeArray();
+
         $token = $request->getToken();
 
-        $model = ArrayObject::ensureArrayObject($request->getModel());
-
-        $this->gateway->execute($httpRequest = new GetHttpRequest());
-
-        if (true === $this->api->verifyRequest($httpRequest->query, $model->toUnsafeArray())) {
-            $model['authResult'] = $httpRequest->query['authResult'];
-
-            if (true === isset($httpRequest->query['pspReference'])) {
-                $model['pspReference'] = $httpRequest->query['pspReference'];
-            }
-
-            $model->toUnsafeArray();
-            return;
-        }
-
-        $extraData = $model['extraData'] ? json_decode($model['extraData'], true) : [];
-
-        if (false === isset($extraData['capture_token']) && $token) {
-            $extraData['captureToken'] = $token->getHash();
-            $extraData['refundToken'] = $this->tokenFactory->createRefundToken($token->getGatewayName(), $token->getDetails() ?? $model)->getHash();
-            $model['resURL'] = $token->getTargetUrl();
-        }
-
-        if (false === isset($extraData['notify_token']) && $token && $this->tokenFactory) {
-            $notifyToken = $this->tokenFactory->createNotifyToken(
-                $token->getGatewayName(),
-                $token->getDetails()
-            );
-
-            $extraData['notifyToken'] = $notifyToken->getHash();
-            $model['notifyURL'] = $notifyToken->getTargetUrl();
-        }
-
-        $model['extraData'] = json_encode($extraData);
-
-        throw new HttpPostRedirect(
-            $this->api->getApiEndpoint(),
-            $this->api->prepareFields($model->toUnsafeArray())
+        $notifyToken = $this->tokenFactory->createNotifyToken(
+            $token->getGatewayName(),
+            $token->getDetails()
         );
+
+
+        $template = new RenderTemplate('@BitBagSyliusAdyenPlugin/payment.html.twig', [
+            'data' => $model['sessions'],
+            'returnOk' => $model['returnUrl'],
+        ]);
+
+        $this->gateway->execute($template);
+
+        throw new HttpResponse($template->getResult());
+        die('omg');
+
+
+
+
+
     }
 
     /**

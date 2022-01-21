@@ -1,0 +1,12 @@
+{
+  "entrypoints": {
+    "adyen-js": {
+      "css": [
+        "/build/shop/adyen-js.css"
+      ],
+      "js": [
+        "/build/shop/adyen-js.js"
+      ]
+    }
+  }
+}
